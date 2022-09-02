@@ -14,8 +14,8 @@ actions = ["up", "down", "left", "right", "bomb", "detonate"]
 l_bombs = []
 
 
-class Move_coor( current_pos ,):
-    def __init__(self,unit_id):
+class Move_coor( ):
+    def __init__(self,unit_id,current_pos):
         self.action="ac1"
         self.x= current_pos[0]
         self.y = current_pos[1]
@@ -28,58 +28,72 @@ class Move_coor( current_pos ,):
     def move_to_pos(coor_w):
         actions1=["up","down","left","right"]
 
-    
-
-
-def move(action,coor,obs,l_actions):
-    l_actions.remove(action)
-    [x, y] = coor
-    new_coor = [0,0]
-    if action == "up":
-        new_coor =  [x, y+1]
-    elif action == "down":
-        new_coor = [x, y-1]
-    elif action == "right":
-        new_coor = [x+1, y]
-    elif action == "left":
-        new_coor = [x-1, y]
-    
-    if new_coor not in obs:
-        return action
-    else:
-        if len(l_actions)==0:
-            return "bomb"
-        action=random.choice(l_actions)
-        return move(action,coor,obs,l_actions)
-    
-
         
-def move_to_pos(pos,coor,obs):
-    actions1=["up","down","left","right"]
-    if coor[0]<pos[0]:
-        action="right"
-    elif coor[0]>pos[0]:
-        action="left"
-    elif coor[1]<pos[1]:
-        action="up"
-    elif coor[1]>pos[1]:
-        action="down"
-    else:
+    def move_away_from_bomb(bomb_radius ):
+
+
+        def check_bomb_around ():                   #######
+            
+            transit = [ [0,0] [1,0], [-1,0] , [0,1] , [0,-1] ] 
+
+            for i in range(0,5):
+                check_pos = pos + transit[i] 
+                if( check_pos in l_bombs ):
+                    move_away_from_bomb()
+
+
+    def move(action,coor,obs,l_actions):
+        l_actions.remove(action)
+        [x, y] = coor
+        new_coor = [0,0]
+        if action == "up":
+            new_coor =  [x, y+1]
+        elif action == "down":
+            new_coor = [x, y-1]
+        elif action == "right":
+            new_coor = [x+1, y]
+        elif action == "left":
+            new_coor = [x-1, y]
+        
+        if new_coor not in obs:
+            return action
+        else:
+            if len(l_actions)==0:
+                return "bomb"
+            action=random.choice(l_actions)
+            return move(action,coor,obs,l_actions)
+        
+
+            
+    def move_to_pos(pos,coor,obs):
+        actions1=["up","down","left","right"]
+        if coor[0]<pos[0]:
+            action="right"
+        elif coor[0]>pos[0]:
+            action="left"
+        elif coor[1]<pos[1]:
+            action="up"
+        elif coor[1]>pos[1]:
+            action="down"
+        else:
+            pass
+            
+
         #action=random.choice(actions1)
         action = "bomb"
         return action
-    action=move(action,coor,obs,actions1)
-    return action
+        action=move(action,coor,obs,actions1)
+        return action
 
-def move_to_pow(unit_coor,pow_coor,l_obs_coor):
-    if pow_coor==[]:
-        return move_to_pos([7,7],unit_coor,l_obs_coor)
-    else:
-        coor=copy.deepcopy(pow_coor[0][0])
-        for pow in pow_coor:
-            if ((abs(pow[0][0]-unit_coor[0])+abs(pow[0][1]-unit_coor[1]))<(abs(coor[0]-unit_coor[0])+abs(coor[1]-unit_coor[1])) and (abs(pow[0][0]-unit_coor[0])+abs(pow[0][1]-unit_coor[1]))<=pow[1]):
-                coor=copy.deepcopy(pow[0])
-        return move_to_pos(coor,unit_coor,l_obs_coor)
+    def move_to_pos(unit_coor,pow_coor,l_obs_coor):
+        if pow_coor==[]:
+            return move_to_pos([7,7],unit_coor,l_obs_coor)
+        else:
+            coor=copy.deepcopy(pow_coor[0][0])
+            for pow in pow_coor:
+                if ((abs(pow[0][0]-unit_coor[0])+abs(pow[0][1]-unit_coor[1]))<(abs(coor[0]-unit_coor[0])+abs(coor[1]-unit_coor[1])) and (abs(pow[0][0]-unit_coor[0])+abs(pow[0][1]-unit_coor[1]))<=pow[1]):
+                    coor=copy.deepcopy(pow[0])
+            return move_to_pos(coor,unit_coor,l_obs_coor)
 
 
 class Agent():

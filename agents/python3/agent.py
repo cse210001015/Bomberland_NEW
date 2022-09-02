@@ -12,61 +12,130 @@ actions = ["up", "down", "left", "right", "bomb", "detonate"]
 l_bombs = []
 
 class Move_coor:
-    def __init__(self,unit_id,current_pos):
+    def __init__(self):
+        self.target=""
         self.actions_taken =[]
-        self.x= current_pos[0]
-        self.y = current_pos[1]
-        self.bomb_around = False 
-        
+        self.x=0
+        self.y=0
+        self.move_away = 0
+    def set_target(self,game_state,available_targets):
+        _,self.target = self.find_nearest_enemy(game_state,available_targets)
+        return self.target
+    def set_coor(self,coor):
+        self.x=coor[0]
+        self.y=coor[1]
 
-    def set_coor(l,self):
-        [x,y]=l
-        self.pos=[x,y]
-    def move(action,game_state):
-        
-    def move_to_pos(self,coor_w):
-        actions1=["up","down","left","right"]
-        if self.x<coor_w[0]:
-            action="right"
-        elif self.x>coor_w[0]:
-            action="left"
-        elif self.y<coor_w[1]:
-            action="up"
-        elif self.y>coor_w[1]:
-            action="down"
-        else:
-            action="bomb"
+    def move(self,action,game_state,l_actions):
+        l_actions.remove(action)
+        obs_coors=[]
+        entities=game_state.get("entities")
+        for entity in entities:
+            if entity.get("type") not in ['a','bp','fp','b']:
+                x=entity.get("x")
+                y=entity.get("y")
+                obs_coor=[x,y]
+                obs_coors.append(obs_coor)
+        new_coor=[0,0]
+        if action=='left':
+            new_coor=[self.x-1,self.y]
+        elif action=='right':
+            new_coor=[self.x+1,self.y]
+        elif action=='up':
+            new_coor=[self.x,self.y+1]
+        elif action=='down':
+            new_coor=[self.x,self.y-1]
+        if new_coor not in obs_coors:
             return action
-        action=self.move(action,game_state)
+        else:
+            if len(l_actions)==1:
+                return "bomb"
+            action=random.choice(l_actions)
+            return self.move(action,game_state,l_actions) 
+
+    def move_away_from_pos(self,b_coor,game_state):
+        if len(self.actions_taken)<4:
+            [x,y,dia]=b_coor
+            return self.move_to_pos([x+1,y+1],game_state)############in place of 1 there was dia
+        else:
+            if(self.move_away==0):
+                self.move_away+=1
+                return self.dec(-int(self.enc(self.actions_taken[-2])))
+            else:
+                self.move_away=0
+                return self.dec(-int(self.enc(self.actions_taken[-4])))
     
-    
-
-
-
-        # for obs in obstacles :
+    def enc(self,action):
+        if action == 'right':
+            return 1
+        if action == 'left':
+            return -1
+        if action =='up':
+            return 2
+        if action =='down':
+            return -2
+        if action =='bomb':
+            return 3
+        if action =='detonate':
+            return -3
+    def dec(self,enc):
+        if enc==1:
+            return 'right'
+        if enc==-1:
+            return 'left'
+        if enc==2:
+            return 'up'
+        if enc==-2:
+            return 'down'
+        if enc==3:
+            return 'bomb'
+        if enc==-3:
+            return 'detonate'
+    def move_away_from_bomb(self,game_state,action):
+        b_coors=[]
+        entities=game_state.get("entities")
+        for entity in entities:
+            a=entity.get("type")
+            if a=="b":
+                x=entity.get("x")
+                y=entity.get("y")
+                dia=entity.get("blast_diameter")
+                b_coor=[x,y,dia]
+                b_coors.append(b_coor)
+        for b_coor in b_coors:
+            x_dist=abs(b_coor[0]-self.x)
+            y_dist=abs(b_coor[1]-self.y)
+            if ((x_dist==0 and y_dist==1) or (x_dist==0 and y_dist==0) or (x_dist==1 and y_dist==0)):
+                action=self.move_away_from_pos(b_coor,game_state)
+        return action
             
-        #     if( obs.get("type") in l_obs_id ):
-        #         t_coord = [obs.get("x"), obs.get("y") ]
 
-        #         if( obs.get("type") =='b' ): 
-        #             l_bombs.append(t_coord)
+    def move_to_pos(self,coor_w,game_state):
+        actions1=["up","down","left","right"]
+        if(random.random()<0.5):
+            if self.x<coor_w[0]:
+                action="right"
+            elif self.x>coor_w[0]:
+                action="left"
+            elif self.y<coor_w[1]:
+                action="up"
+            elif self.y>coor_w[1]:
+                action="down"
+            else:
+                return "bomb"
+        else:
+            if self.y<coor_w[1]:
+                action="up"
+            elif self.y>coor_w[1]:
+                action="down"
+            elif self.x<coor_w[0]:
+                action="right"
+            elif self.x>coor_w[0]:
+                action="left"
+            else:
+                return "bomb"
+        action=self.move(action,game_state,actions1)
+        return action
 
-        #         l_t_coord_obs.append(t_coord) 
-
-
-    def move_away_from_bomb(bomb_radius ):
-
-
-    def check_bomb_around ():                   #######
-        
-        transit = [ [0,0] [1,0], [-1,0] , [0,1] , [0,-1] ] 
-
-        for i in range(0,5):
-            check_pos = pos + transit[i] 
-            if( check_pos in l_bombs ):
-                move_away_from_bomb()
-
-        
     def bomb_crate(self,game_state):
         min_d=100
         entities_lst=game_state.get("entities")
@@ -83,18 +152,57 @@ class Move_coor:
             d += abs(l[1]-self.y)
             if d<min_d:
                 min_d=d
-                [x,y]=l
-                coor_w=[x,y]
-        action=self.move_to_pos(coor_w)
+                coor_w=l
+        action=self.move_to_pos(coor_w,game_state)
         if min_d==1:
             action="bomb"
         return action 
+
+    def find_nearest_enemy(self,game_state,available_targets):
+        min_d = 100
+        agent_id=game_state.get("connection").get("agent_id")
+        nearest_enemy= ''
+        if agent_id=='a':
+            opp_agent_id='b'
+        else:
+            opp_agent_id='a'
+        opp_unit_ids=game_state.get("agents").get(opp_agent_id).get("unit_ids")
+        # print(opp_unit_ids)
+        opp_coors=[]
+        enemy = []
+        for opp_unit_id in opp_unit_ids:
+            if(opp_unit_id in available_targets):
+                opp_coor=game_state.get("unit_state").get(opp_unit_id).get("coordinates")
+                opp_coors.append(opp_coor)
+                enemy.append(opp_unit_id)
+        # print(len(opp_coors))
+        for i,l in enumerate(opp_coors):
+            d= self.find_distance(l)
+            if d<min_d:
+                nearest_enemy = enemy[i]
+                min_d=d
+                coor_w=l 
+        return coor_w,nearest_enemy
+    def bomb_enemy(self,game_state):
+        
+        coor_w = game_state.get("unit_state").get(self.target).get("coordinates")
+        
+        action=self.move_to_pos(coor_w,game_state)
+        d = self.find_distance(coor_w)
+        if d==1:
+            action="bomb"
+        return action 
+    def find_distance(self,pos):
+        d=abs(pos[0]-self.x)
+        d += abs(pos[1]-self.y)
+        return d
 
     
     
 
 m=[Move_coor(),Move_coor(),Move_coor()]
-
+available_targets = ["c","d","e","f","g","h"]
+is_first = True
 class Agent():
     def __init__(self):
         self._client = GameState(uri)
@@ -121,20 +229,28 @@ class Agent():
             return None
 
     async def _on_game_tick(self, tick_number, game_state):
-        
+
+        global is_first
         global m
         i=1
         # get my units
         my_agent_id = game_state.get("connection").get("agent_id")
         my_units = game_state.get("agents").get(my_agent_id).get("unit_ids")
-
+        # game_tick=game_state.get("tick")
         # send each unit a random action
         for unit_id in my_units:
-
+            
+            if is_first:
+                target = m[i-1].set_target(game_state,available_targets)
+                available_targets.remove(target)
+            # print("Targets",len(available_targets))
             coor=game_state.get("unit_state").get(unit_id).get("coordinates")
             m[i-1].set_coor(coor)
-            action=m[i-1].bomb_crate(game_state)
-            action=m[i-1].get_away_from_bomb(game_state,action)
+            action=m[i-1].bomb_enemy(game_state)
+            # action=m[i-1].bomb_crate(game_state)
+            action=m[i-1].move_away_from_bomb(game_state,action)
+
+            m[i-1].actions_taken.append(action)
             i+=1
             if action in ["up", "left", "right", "down"]:
                 await self._client.send_move(action, unit_id)
@@ -147,6 +263,7 @@ class Agent():
                     await self._client.send_detonate(x, y, unit_id)
             else:
                 print(f"Unhandled action: {action} for unit {unit_id}")
+        is_first=False
 
 
 def main():

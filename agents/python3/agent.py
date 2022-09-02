@@ -49,9 +49,15 @@ class Move_coor:
         if new_coor not in obs_coors:
             return action
         else:
-            if len(l_actions)==1:
+            if len(l_actions)==0:
                 return "bomb"
             action=random.choice(l_actions)
+            if  len(self.actions_taken)>0:
+                if self.enc(action)== -self.enc(self.actions_taken[-1]):
+                    l_actions.remove(action)
+                    if len(l_actions)==0:
+                        return "bomb"
+                    action=random.choice(l_actions)
             return self.move(action,game_state,l_actions) 
 
     def move_away_from_pos(self,b_coor,game_state):
@@ -62,9 +68,20 @@ class Move_coor:
             if(self.move_away==0):
                 self.move_away+=1
                 return self.dec(-int(self.enc(self.actions_taken[-2])))
+            elif(self.move_away==1):
+                self.move_away+=1
+                return self.dec(-int(self.enc(self.actions_taken[-4])))
+            elif(self.move_away==2):
+                self.move_away=3
+                return 'detonate'
+            elif(self.move_away>2 and self.move_away<7):
+                self.move_away+=1
+                return ' '
             else:
                 self.move_away=0
-                return self.dec(-int(self.enc(self.actions_taken[-4])))
+                return ' '
+
+            
     
     def enc(self,action):
         if action == 'right':
@@ -79,6 +96,7 @@ class Move_coor:
             return 3
         if action =='detonate':
             return -3
+        return 0
     def dec(self,enc):
         if enc==1:
             return 'right'
@@ -92,6 +110,7 @@ class Move_coor:
             return 'bomb'
         if enc==-3:
             return 'detonate'
+        return ' '
     def move_away_from_bomb(self,game_state,action):
         b_coors=[]
         entities=game_state.get("entities")
@@ -198,7 +217,44 @@ class Move_coor:
         d=abs(pos[0]-self.x)
         d += abs(pos[1]-self.y)
         return d
-
+    def find_uavail(self,unit_coor):
+        nearest_pos = [] 
+        x = unit_coor[0]
+        y= unit_coor[1] 
+        if(x==0 and y==0) :
+            nearest_pos.append([x+1,y]) 
+            nearest_pos.append([x,y+1])  
+        elif(x==14 and y==14) : 
+            nearest_pos.append([x,y-1]) 
+            nearest_pos.append([x-1,y])  
+        elif(x==0 and y==14) : 
+            nearest_pos.append([x+1,y]) 
+            nearest_pos.append([x,y-1])      
+        elif(x==14 and y==0) : 
+            nearest_pos.append([x-1,y]) 
+            nearest_pos.append([x,y+1])  
+        elif(x==0) : 
+            nearest_pos.append([x+1,y]) 
+            nearest_pos.append([x,y+1]) 
+            nearest_pos.append([x,y-1])       
+        elif(x==14) :
+            nearest_pos.append([x-1,y]) 
+            nearest_pos.append([x,y+1]) 
+            nearest_pos.append([x,y-1])  
+        elif(y==14) :
+            nearest_pos.append([x,y-1]) 
+            nearest_pos.append([x-1,y]) 
+            nearest_pos.append([x+1,y])  
+        elif(y==0) :
+            nearest_pos.append([x,y+1]) 
+            nearest_pos.append([x-1,y]) 
+            nearest_pos.append([x+1,y])    
+        else : 
+            nearest_pos.append([x,y-1]) 
+            nearest_pos.append([x-1,y]) 
+            nearest_pos.append([x+1,y])  
+            nearest_pos.append([x,y+1])
+        
     
     
 
@@ -222,8 +278,7 @@ class Agent():
     # returns coordinates of the first bomb placed by a unit
     def _get_bomb_to_detonate(self, unit) -> Union[int, int] or None:
         entities = self._client._state.get("entities")
-        bombs = list(filter(lambda entity: entity.get(
-            "unit_id") == unit and entity.get("type") == "b", entities))
+        bombs = list(filter(lambda entity: entity.get("unit_id") == unit and entity.get("type") == "b", entities))
         bomb = next(iter(bombs or []), None)
         if bomb != None:
             return [bomb.get("x"), bomb.get("y")]
@@ -242,17 +297,19 @@ class Agent():
         # send each unit a random action
         for unit_id in my_units:
             
-            if is_first:
-                target = m[i-1].set_target(game_state,available_targets)
-                available_targets.remove(target)
-            # print("Targets",len(available_targets))
+            # if is_first:
+            #     target = m[i-1].set_target(game_state,available_targets)
+            #     available_targets.remove(target)
+            # # print("Targets",len(available_targets))
             coor=game_state.get("unit_state").get(unit_id).get("coordinates")
             m[i-1].set_coor(coor)
-            action=m[i-1].bomb_enemy(game_state)
-            # action=m[i-1].bomb_crate(game_state)
-            action=m[i-1].move_away_from_bomb(game_state,action)
+            # action=m[i-1].bomb_enemy(game_state)
+            # # action=m[i-1].bomb_crate(game_state)
+            # action=m[i-1].move_away_from_bomb(game_state,action)
 
-            m[i-1].actions_taken.append(action)
+            # m[i-1].actions_taken.append(action)
+            # i+=1
+            action=m[i-1].move_to_pos([7,7],game_state)
             i+=1
             if action in ["up", "left", "right", "down"]:
                 await self._client.send_move(action, unit_id)

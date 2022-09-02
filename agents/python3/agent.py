@@ -4,6 +4,7 @@ import asyncio
 import random
 import os
 import time
+import copy
 
 uri = os.environ.get(
     'GAME_CONNECTION_STRING') or "ws://127.0.0.1:3000/?role=agent&agentId=agentId&name=defaultName"

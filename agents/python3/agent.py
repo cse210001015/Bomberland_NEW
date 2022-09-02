@@ -97,6 +97,7 @@ class Move_coor( ):
 
 m=[Move_coor(),Move_coor(),Move_coor()]
 
+
 class Agent():
     def __init__(self):
         self._client = GameState(uri)

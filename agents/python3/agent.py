@@ -9,57 +9,91 @@ uri = os.environ.get(
     'GAME_CONNECTION_STRING') or "ws://127.0.0.1:3000/?role=agent&agentId=agentId&name=defaultName"
 
 actions = ["up", "down", "left", "right", "bomb", "detonate"]
+l_bombs = []
 
-def move(action,coor,obs,l_actions):
-    l_actions.remove(action)
-    [x, y] = coor
-    new_coor = [0,0]
-    if action == "up":
-        new_coor =  [x, y+1]
-    elif action == "down":
-        new_coor = [x, y-1]
-    elif action == "right":
-        new_coor = [x+1, y]
-    elif action == "left":
-        new_coor = [x-1, y]
+class Move_coor:
+    def __init__(self,unit_id,current_pos):
+        self.actions_taken =[]
+        self.x= current_pos[0]
+        self.y = current_pos[1]
+        self.bomb_around = False 
+        
+
+    def set_coor(l,self):
+        [x,y]=l
+        self.pos=[x,y]
+    def move(action,game_state):
+        
+    def move_to_pos(self,coor_w):
+        actions1=["up","down","left","right"]
+        if self.x<coor_w[0]:
+            action="right"
+        elif self.x>coor_w[0]:
+            action="left"
+        elif self.y<coor_w[1]:
+            action="up"
+        elif self.y>coor_w[1]:
+            action="down"
+        else:
+            action="bomb"
+            return action
+        action=self.move(action,game_state)
     
-    if new_coor not in obs:
-        return action
-    else:
-        if len(l_actions)==0:
-            return "bomb"
-        action=random.choice(l_actions)
-        return move(action,coor,obs,l_actions)
     
+
+
+
+        # for obs in obstacles :
+            
+        #     if( obs.get("type") in l_obs_id ):
+        #         t_coord = [obs.get("x"), obs.get("y") ]
+
+        #         if( obs.get("type") =='b' ): 
+        #             l_bombs.append(t_coord)
+
+        #         l_t_coord_obs.append(t_coord) 
+
+
+    def move_away_from_bomb(bomb_radius ):
+
+
+    def check_bomb_around ():                   #######
+        
+        transit = [ [0,0] [1,0], [-1,0] , [0,1] , [0,-1] ] 
+
+        for i in range(0,5):
+            check_pos = pos + transit[i] 
+            if( check_pos in l_bombs ):
+                move_away_from_bomb()
 
         
-def move_to_pos(pos,coor,obs):
-    actions1=["up","down","left","right"]
-    if coor[0]<pos[0]:
-        action="right"
-    elif coor[0]>pos[0]:
-        action="left"
-    elif coor[1]<pos[1]:
-        action="up"
-    elif coor[1]>pos[1]:
-        action="down"
-    else:
-        #action=random.choice(actions1)
-        action = "bomb"
-        return action
-    action=move(action,coor,obs,actions1)
-    return action
+    def bomb_crate(self,game_state):
+        min_d=100
+        entities_lst=game_state.get("entities")
+        pos_crate=[]
+        coor_w=[]
+        for en in entities_lst:
+            a=en.get("type")
+            if a=='w':
+                x=en.get("x")
+                y=en.get("y")
+                pos_crate.append([x,y])
+        for l in pos_crate:
+            d=abs(l[0]-self.x)
+            d += abs(l[1]-self.y)
+            if d<min_d:
+                min_d=d
+                [x,y]=l
+                coor_w=[x,y]
+        action=self.move_to_pos(coor_w)
+        if min_d==1:
+            action="bomb"
+        return action 
 
-def move_to_pow(unit_coor,pow_coor,l_obs_coor):
-    if pow_coor==[]:
-        return move_to_pos([7,7],unit_coor,l_obs_coor)
-    else:
-        coor=copy.deepcopy(pow_coor[0][0])
-        for pow in pow_coor:
-            if ((abs(pow[0][0]-unit_coor[0])+abs(pow[0][1]-unit_coor[1]))<(abs(coor[0]-unit_coor[0])+abs(coor[1]-unit_coor[1])) and (abs(pow[0][0]-unit_coor[0])+abs(pow[0][1]-unit_coor[1]))<=pow[1]):
-                coor=copy.deepcopy(pow[0])
-        return move_to_pos(coor,unit_coor,l_obs_coor)
+    
+    
 
+m=[Move_coor(),Move_coor(),Move_coor()]
 
 class Agent():
     def __init__(self):
@@ -87,36 +121,21 @@ class Agent():
             return None
 
     async def _on_game_tick(self, tick_number, game_state):
-
+        
+        global m
+        i=1
         # get my units
         my_agent_id = game_state.get("connection").get("agent_id")
         my_units = game_state.get("agents").get(my_agent_id).get("unit_ids")
 
-        l_obs_id = [ 'b' , 'x' , 'o' , 'm' , 'w'] 
-        l_obs_coor=[]
-        l_pow_id=['a','bp']
-        l_pow_coor=[]
-        entities=game_state.get("entities")
-        for entity in entities:
-                a=entity.get("type")
-                if a in l_obs_id :
-                    x=entity.get("x")
-                    y=entity.get("y")
-                    co_2=[x,y]
-                    l_obs_coor.append(co_2)
-                if a in l_pow_id :
-                    x=entity.get("x")
-                    y=entity.get("y")
-                    exp=entity.get("expires")
-                    co_2=[[x,y],exp]
-                    l_pow_coor.append(co_2)
         # send each unit a random action
         for unit_id in my_units:
 
-            
-            unit_coor=game_state.get("unit_state").get(unit_id).get("coordinates")
-            # action=move_to_pos([7,7],unit_coor,l_obs_coor)
-            action=move_to_pow(unit_coor,l_pow_coor,l_obs_coor)
+            coor=game_state.get("unit_state").get(unit_id).get("coordinates")
+            m[i-1].set_coor(coor)
+            action=m[i-1].bomb_crate(game_state)
+            action=m[i-1].get_away_from_bomb(game_state,action)
+            i+=1
             if action in ["up", "left", "right", "down"]:
                 await self._client.send_move(action, unit_id)
             elif action == "bomb":

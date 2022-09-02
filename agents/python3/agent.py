@@ -95,6 +95,7 @@ class Move_coor( ):
                     coor=copy.deepcopy(pow[0])
             return move_to_pos(coor,unit_coor,l_obs_coor)
 
+m=[Move_coor(),Move_coor(),Move_coor()]
 
 class Agent():
     def __init__(self):
@@ -122,36 +123,21 @@ class Agent():
             return None
 
     async def _on_game_tick(self, tick_number, game_state):
-
+        
+        global m
+        i=1
         # get my units
         my_agent_id = game_state.get("connection").get("agent_id")
         my_units = game_state.get("agents").get(my_agent_id).get("unit_ids")
 
-        l_obs_id = [ 'b' , 'x' , 'o' , 'm' , 'w'] 
-        l_obs_coor=[]
-        l_pow_id=['a','bp']
-        l_pow_coor=[]
-        entities=game_state.get("entities")
-        for entity in entities:
-                a=entity.get("type")
-                if a in l_obs_id :
-                    x=entity.get("x")
-                    y=entity.get("y")
-                    co_2=[x,y]
-                    l_obs_coor.append(co_2)
-                if a in l_pow_id :
-                    x=entity.get("x")
-                    y=entity.get("y")
-                    exp=entity.get("expires")
-                    co_2=[[x,y],exp]
-                    l_pow_coor.append(co_2)
         # send each unit a random action
         for unit_id in my_units:
 
-            
-            unit_coor=game_state.get("unit_state").get(unit_id).get("coordinates")
-            # action=move_to_pos([7,7],unit_coor,l_obs_coor)
-            action=move_to_pow(unit_coor,l_pow_coor,l_obs_coor)
+            coor=game_state.get("unit_state").get(unit_id).get("coordinates")
+            m[i-1].set_coor(coor)
+            action=m[i-1].bomb_crate(game_state)
+            action=m[i-1].get_away_from_bomb(game_state,action)
+            i+=1
             if action in ["up", "left", "right", "down"]:
                 await self._client.send_move(action, unit_id)
             elif action == "bomb":

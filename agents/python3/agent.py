@@ -8,10 +8,26 @@ import time
 uri = os.environ.get(
     'GAME_CONNECTION_STRING') or "ws://127.0.0.1:3000/?role=agent&agentId=agentId&name=defaultName"
 
+
 actions = ["up", "down", "left", "right", "bomb", "detonate"]
- 
-def print(word):
-    print(word)
+l_bombs = []
+
+
+class Move_coor( current_pos ,):
+    def __init__(self,unit_id):
+        self.action="ac1"
+        self.x= current_pos[0]
+        self.y = current_pos[1]
+        self.bomb_around = False 
+        
+
+    def set_coor(l,self):
+        [x,y]=l
+        self.pos=[x,y]
+    def move_to_pos(coor_w):
+        actions1=["up","down","left","right"]
+
+    
 
 
 def move(action,coor,obs,l_actions):

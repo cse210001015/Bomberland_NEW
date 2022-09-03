@@ -37,6 +37,8 @@ class Move_coor:
                 y=entity.get("y")
                 obs_coor=[x,y]
                 obs_coors.append(obs_coor)
+        enemy_coors = self.find_enemies(game_state)
+        obs_coors+=enemy_coors
         new_coor=[0,0]
         if action=='left':
             new_coor=[self.x-1,self.y]
@@ -49,13 +51,13 @@ class Move_coor:
         if new_coor not in obs_coors:
             return action
         else:
-            if len(l_actions)==0:
+            if len(l_actions)==1:
                 return "bomb"
             action=random.choice(l_actions)
             if  len(self.actions_taken)>0:
                 if self.enc(action)== -self.enc(self.actions_taken[-1]):
                     l_actions.remove(action)
-                    if len(l_actions)==0:
+                    if len(l_actions)==1:
                         return "bomb"
                     action=random.choice(l_actions)
             return self.move(action,game_state,l_actions) 
@@ -142,7 +144,7 @@ class Move_coor:
             elif self.y>coor_w[1]:
                 action="down"
             else:
-                return "bomb"
+                return " "
         else:
             if self.y<coor_w[1]:
                 action="up"
@@ -153,7 +155,7 @@ class Move_coor:
             elif self.x>coor_w[0]:
                 action="left"
             else:
-                return "bomb"
+                return " "
         action=self.move(action,game_state,actions1)
         return action
 
@@ -178,7 +180,23 @@ class Move_coor:
         if min_d==1:
             action="bomb"
         return action 
-
+    def find_enemies(self,game_state):
+        agent_id=game_state.get("connection").get("agent_id")
+        nearest_enemy= ''
+        if agent_id=='a':
+            opp_agent_id='b'
+        else:
+            opp_agent_id='a'
+        opp_unit_ids=game_state.get("agents").get(opp_agent_id).get("unit_ids")
+        # print(opp_unit_ids)
+        opp_coors=[]
+        enemy = []
+        for opp_unit_id in opp_unit_ids:
+            if(opp_unit_id in available_targets):
+                opp_coor=game_state.get("unit_state").get(opp_unit_id).get("coordinates")
+                opp_coors.append(opp_coor)
+                enemy.append(opp_unit_id)
+        return opp_coors
     def find_nearest_enemy(self,game_state,available_targets):
         min_d = 100
         agent_id=game_state.get("connection").get("agent_id")
@@ -297,20 +315,20 @@ class Agent():
         # send each unit a random action
         for unit_id in my_units:
             
-            # if is_first:
-            #     target = m[i-1].set_target(game_state,available_targets)
-            #     available_targets.remove(target)
-            # # print("Targets",len(available_targets))
+            if is_first:
+                target = m[i-1].set_target(game_state,available_targets)
+                available_targets.remove(target)
+            # print("Targets",len(available_targets))
             coor=game_state.get("unit_state").get(unit_id).get("coordinates")
             m[i-1].set_coor(coor)
-            # action=m[i-1].bomb_enemy(game_state)
-            # # action=m[i-1].bomb_crate(game_state)
-            # action=m[i-1].move_away_from_bomb(game_state,action)
+            action=m[i-1].bomb_enemy(game_state)
+            # action=m[i-1].bomb_crate(game_state)
+            action=m[i-1].move_away_from_bomb(game_state,action)
 
-            # m[i-1].actions_taken.append(action)
-            # i+=1
-            action=m[i-1].move_to_pos([7,7],game_state)
+            m[i-1].actions_taken.append(action)
             i+=1
+            # action=m[i-1].move_to_pos([7,7],game_state)
+            # i+=1
             if action in ["up", "left", "right", "down"]:
                 await self._client.send_move(action, unit_id)
             elif action == "bomb":

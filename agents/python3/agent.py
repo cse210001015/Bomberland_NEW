@@ -4,7 +4,7 @@ import asyncio
 import random
 import os
 import time
-import copy
+import torch
 
 uri = os.environ.get(
     'GAME_CONNECTION_STRING') or "ws://127.0.0.1:3000/?role=agent&agentId=agentId&name=defaultName"
@@ -22,6 +22,8 @@ class Move_coor:
         self.move_away = 0
         self.is_dead=False
         self.id=''
+        self.is_bombing = False
+        self.bombing_sequence = 0
     def set_target(self,game_state,available_targets):
         _,self.target = self.find_nearest_enemy(game_state,available_targets)
         return self.target
@@ -36,7 +38,7 @@ class Move_coor:
         obs_coors=[]
         entities=game_state.get("entities")
         for entity in entities:
-            if entity.get("type") not in ['a','bp','fp','b']:
+            if entity.get("type") not in ['a','fp','b']:
                 x=entity.get("x")
                 y=entity.get("y")
                 obs_coor=[x,y]
@@ -54,14 +56,18 @@ class Move_coor:
             return action
         else:
             if len(l_actions)==0:
-                return "bomb"
+                action = "bomb"
+                self.is_bombing=True
+                return action
             action=random.choice(l_actions)
             if  len(self.actions_taken)>0:
                 if self.enc(action)== -self.enc(self.actions_taken[-1]):
                     # print(self.actions_taken[-1],action)
                     l_actions.remove(action)
                     if len(l_actions)==0:
-                        return "bomb"
+                        self.is_bombing=True
+                        action = "bomb"
+                        return action
                     action=random.choice(l_actions)
             return self.move(action,game_state,l_actions) 
     def move_diag(self,game_state,b_coor):
@@ -69,6 +75,7 @@ class Move_coor:
         obs_coors=[]
         entities=game_state.get("entities")
         for entity in entities:
+            pass
             
 
     def move_away_from_pos(self,b_coor,game_state):
@@ -158,7 +165,56 @@ class Move_coor:
             if ((x_dist==0 and y_dist==1) or (x_dist==0 and y_dist==0) or (x_dist==1 and y_dist==0)):
                 action=self.move_away_from_pos(b_coor,game_state)
         return action
-            
+
+    def place_bomb(self):
+        if(self.bombing_sequence==0):
+            action = self.prev_action(1)
+            if action == " " or action == "low":
+                action = next(self.move_away_from_blast())
+            print(self.id,action)
+            self.bombing_sequence+=1
+            return action
+        if(self.bombing_sequence==1):
+            action = self.prev_action(2)
+            if action == " " or action == "low":
+                action = next(self.move_away_from_blast())
+            self.bombing_sequence+=1
+            return action
+        if self.bombing_sequence in [2,3,4]:
+            self.bombing_sequence+=1
+            return " "
+        if self.bombing_sequence==5:
+            self.bombing_sequence+=1
+            return "detonate"
+        if self.bombing_sequence in [6,7,8,9]:
+            self.bombing_sequence+=1
+            return " "
+        if self.bombing_sequence==10:
+            self.bombing_sequence=0
+            return "done"
+        
+    def move_away_from_blast(self):
+        # spots = self.diagonal_positions([self.x,self.y])
+        # available_spot = self.nearest_avaialable_spot(spots)
+        # self.go_to(available_spot)
+        while True:
+            yield " "
+    def diagonal_positions(self,pos):
+        x,y = pos
+        positions = []
+        positions.append([x+1,y+1])
+        positions.append([x-1,y+1])
+        positions.append([x+1,y-1])
+        positions.append([x-1,y-1])
+        return positions
+    def prev_action(self,n):
+        if len(self.actions_taken)>2*n-1:
+            action = self.dec(-int(self.enc(self.actions_taken[-2*n])))
+            return action
+        else:
+            return "low"
+      
+        
 
     def move_to_pos(self,coor_w,game_state):
         actions1=["up","down","left","right"]
@@ -172,7 +228,7 @@ class Move_coor:
             elif self.y>coor_w[1]:
                 action="down"
             else:
-                return "bomb"
+                return " "
         else:
             if self.y<coor_w[1]:
                 action="up"
@@ -183,7 +239,7 @@ class Move_coor:
             elif self.x>coor_w[0]:
                 action="left"
             else:
-                return "bomb"
+                return " "
         action=self.move(action,game_state,actions1)
         return action
 
@@ -284,11 +340,12 @@ class Move_coor:
             nearest_pos.append([x-1,y]) 
             nearest_pos.append([x+1,y])  
             nearest_pos.append([x,y+1])
+        return nearest_pos
         
     
     
 
-m=[Move_coor(),Move_coor(),Move_coor()]
+unit=[Move_coor(),Move_coor(),Move_coor()]
 available_targets = ["c","d","e","f","g","h"]
 is_first = True
 class Agent():
@@ -318,8 +375,8 @@ class Agent():
     async def _on_game_tick(self, tick_number, game_state):
 
         global is_first
-        global m
-        i=1
+        global unit
+        i=0
         # get my units
         my_agent_id = game_state.get("connection").get("agent_id")
         my_units = game_state.get("agents").get(my_agent_id).get("unit_ids")
@@ -328,26 +385,31 @@ class Agent():
         for unit_id in my_units:
             
             if is_first:
-                target = m[i-1].set_target(game_state,available_targets)
+                target = unit[i].set_target(game_state,available_targets)
                 available_targets.remove(target)
-                m[i-1].set_id(unit_id)
+                unit[i].set_id(unit_id)
             hp=game_state.get("unit_state").get(unit_id).get("hp")
             if hp==0:
-                m[i-1].is_dead=True
+                unit[i].is_dead=True
             # # print("Targets",len(available_targets))
-            if not m[i-1].is_dead:
+            if not unit[i].is_dead:
                 coor=game_state.get("unit_state").get(unit_id).get("coordinates")
-                m[i-1].set_coor(coor)
-                action=m[i-1].bomb_enemy(game_state)
-                # action=m[i-1].bomb_crate(game_state)
-                action=m[i-1].move_away_from_bomb(game_state,action)
-
-                m[i-1].actions_taken.append(action)
+                unit[i].set_coor(coor)
+                # action=unit[i].bomb_enemy(game_state)
+                # # action=unit[i].bomb_crate(game_state)
+                # action=unit[i].move_away_from_bomb(game_state,action)
+                if unit[i].is_bombing:
+                    action = unit[i].place_bomb()
+                    if action == "done":
+                        unit[i].is_bombing = False
+                else:
+                    action= unit[i].move_to_pos([7,7],game_state)
+                unit[i].actions_taken.append(action)
             else:
                 action=""
             i+=1
             
-            # action=m[i-1].move_to_pos([7,7],game_state)
+            # action=unit[i].move_to_pos([7,7],game_state)
             # i+=1
             if action in ["up", "left", "right", "down"]:
                 await self._client.send_move(action, unit_id)

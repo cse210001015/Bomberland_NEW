@@ -4,7 +4,6 @@ import asyncio
 import random
 import os
 import time
-import torch
 
 uri = os.environ.get(
     'GAME_CONNECTION_STRING') or "ws://127.0.0.1:3000/?role=agent&agentId=agentId&name=defaultName"
@@ -291,13 +290,12 @@ class Move_coor:
                 coor_w=l 
         return coor_w,nearest_enemy
     def bomb_enemy(self,game_state):
-        
         coor_w = game_state.get("unit_state").get(self.target).get("coordinates")
-        
         action=self.move_to_pos(coor_w,game_state)
         d = self.find_distance(coor_w)
         if d==1:
             action="bomb"
+            self.is_bombing=True
         return action 
     def find_distance(self,pos):
         d=abs(pos[0]-self.x)
@@ -348,6 +346,7 @@ class Move_coor:
 unit=[Move_coor(),Move_coor(),Move_coor()]
 available_targets = ["c","d","e","f","g","h"]
 is_first = True
+tick = 0
 class Agent():
     def __init__(self):
         self._client = GameState(uri)
@@ -376,11 +375,13 @@ class Agent():
 
         global is_first
         global unit
+        global tick
         i=0
         # get my units
         my_agent_id = game_state.get("connection").get("agent_id")
         my_units = game_state.get("agents").get(my_agent_id).get("unit_ids")
-        # game_tick=game_state.get("tick")
+        tick+=1
+        #game_tick=game_state.get("tick")
         # send each unit a random action
         for unit_id in my_units:
             
@@ -403,7 +404,13 @@ class Agent():
                     if action == "done":
                         unit[i].is_bombing = False
                 else:
-                    action= unit[i].move_to_pos([7,7],game_state)
+                    
+                    if(tick>200):
+                        action= unit[i].move_to_pos([7,7],game_state)
+                    else:
+                        action=unit[i].bomb_enemy(game_state)
+                    #action=unit[i].bomb_enemy(game_state)
+
                 unit[i].actions_taken.append(action)
             else:
                 action=""

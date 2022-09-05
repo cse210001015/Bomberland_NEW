@@ -680,12 +680,6 @@ class Agent():
                     action=unit[i].escape_enemy_bomb(game_state)
                     if action== "done":
                         unit[i].near_bomb=False
-                    
-                    if(tick>200):
-                        action= unit[i].move_to_pos([7,7],game_state)
-                    else:
-                        action=unit[i].bomb_enemy(game_state)
-                    #action=unit[i].bomb_enemy(game_state)
 
                 unit[i].actions_taken.append(action)
                 

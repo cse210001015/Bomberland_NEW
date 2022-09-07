@@ -436,9 +436,9 @@ class Move_coor:
         if v==0:
             return "done"
         if min_d==2 and dia==3:
-            return ""
+            return "detonate"
         elif min_d==3 or diag:
-            return ""
+            return "detonate"
         else:
             entities=game_state.get("entities")
             for entity in entities:
